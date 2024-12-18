@@ -1,3 +1,5 @@
+let typingTimeout;
+
 const nickname = new URLSearchParams(window.location.search).get('nickname');
 const channelId = new URLSearchParams(window.location.search).get('channelId');
 let socket = new SockJS('/ws');
@@ -7,6 +9,11 @@ stompClient.connect({}, function (frame) {
     stompClient.subscribe(`/topic/messages/${channelId}`, function (response) {
         let message = JSON.parse(response.body);
         appendMessage(message.sender, message.content);
+    });
+
+    stompClient.subscribe(`/topic/typing/${channelId}`, function (response) {
+        let typingData = JSON.parse(response.body);
+        displayTyping(typingData);
     });
 
     fetch(`/api/chat/channels/${channelId}/messages`)
@@ -37,6 +44,36 @@ function appendMessage(sender, content) {
     let newMessage = document.createElement('li');
     newMessage.textContent = sender + ": " + content;
     messages.appendChild(newMessage);
+}
+
+function typing() {
+    let content = document.getElementById('message').value;
+    if (content.trim() !== '') {
+        let typingData = {
+            sender: nickname,
+            channelId: channelId
+        };
+        stompClient.send(`/app/chat/channels/${channelId}/typing`, {}, JSON.stringify(typingData));
+
+        // Clear the previous timeout if the user is still typing
+        clearTimeout(typingTimeout);
+    } else {
+        clearTypingIndicator();
+    }
+
+    // Set a timeout to clear the typing indicator after 3 seconds of inactivity
+    typingTimeout = setTimeout(() => {
+        clearTypingIndicator();
+    }, 3000);
+}
+
+function displayTyping(typingData) {
+    let typingIndicator = document.getElementById('typing-indicator');
+    typingIndicator.textContent = typingData.sender + " is typing...";
+}
+
+function clearTypingIndicator() {
+    document.getElementById('typing-indicator').textContent = '';
 }
 
 function leaveChat() {

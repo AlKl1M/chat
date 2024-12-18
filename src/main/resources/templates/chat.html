@@ -13,9 +13,10 @@
 <h1>Chat Room</h1>
 <div id="chat">
     <ul id="messages"></ul>
+    <div id="typing-indicator"></div>
 </div>
 <div>
-    <input type="text" id="message" placeholder="Type a message">
+    <input type="text" id="message" placeholder="Type a message" oninput="typing()">
     <button onclick="sendMessage()">Send</button>
 </div>
 <button class="leave-button" onclick="leaveChat()">Leave Chat</button>

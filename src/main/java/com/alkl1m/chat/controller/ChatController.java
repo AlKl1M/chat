@@ -1,6 +1,7 @@
 package com.alkl1m.chat.controller;
 
 import com.alkl1m.chat.dto.ChatMessageDto;
+import com.alkl1m.chat.dto.TypingMessage;
 import com.alkl1m.chat.entity.ChatMessage;
 import com.alkl1m.chat.service.ChatService;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -26,6 +27,15 @@ public class ChatController {
             @DestinationVariable("channelId") String channelId) {
 
         return chatService.saveMessage(chatMessageDto);
+    }
+
+    @MessageMapping("/chat/channels/{channelId}/typing")
+    @SendTo("/topic/typing/{channelId}")
+    public Mono<TypingMessage> typing(
+            @Payload TypingMessage typingMessage,
+            @DestinationVariable("channelId") String channelId) {
+
+        return Mono.just(typingMessage);
     }
 
 }
