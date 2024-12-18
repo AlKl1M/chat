@@ -43,4 +43,7 @@ public class ChatService {
         return messageRepository.findByChannelId(channelId);
     }
 
+    public Flux<ChatChannel> getAllChannels() {
+        return channelRepository.findAll();
+    }
 }
