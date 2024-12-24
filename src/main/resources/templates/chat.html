@@ -15,11 +15,11 @@
     <ul id="messages"></ul>
     <div id="typing-indicator"></div>
 </div>
-<div>
+<div class="input-container">
     <input type="text" id="message" placeholder="Type a message" oninput="typing()">
+    <input type="file" id="file-input" accept="*/*">
     <button onclick="sendMessage()">Send</button>
+    <button class="leave-button" onclick="leaveChat()">Leave Chat</button>
 </div>
-<button class="leave-button" onclick="leaveChat()">Leave Chat</button>
-
 </body>
 </html>

@@ -18,5 +18,5 @@ public class ChatMessage {
     private String content;
     private Instant timestamp;
     private boolean delivered;
-    private boolean received;
+    private String fileUrl;
 }

@@ -36,6 +36,11 @@ h1 {
 #messages li:nth-child(odd) {
     background-color: #f9f9f9;
 }
+.input-container {
+    display: flex;
+    align-items: center;
+    margin-top: 15px;
+}
 input[type="text"] {
     width: 70%;
     padding: 10px;
@@ -59,7 +64,7 @@ button:hover {
 }
 .leave-button {
     background-color: #dc3545;
-    margin-top: 15px;
+    margin-left: 10px;
 }
 .leave-button:hover {
     background-color: #c82333;
