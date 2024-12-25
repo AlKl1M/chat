@@ -1,108 +1,96 @@
-let typingTimeout;
-const nickname = new URLSearchParams(window.location.search).get('nickname');
-const channelId = new URLSearchParams(window.location.search).get('channelId');
-let socket = new SockJS('/ws');
-let stompClient = Stomp.over(socket);
+let socket;
+let sessionChannelId = "";
+let nickname = "";
 
-stompClient.connect({}, function (frame) {
-    console.log('Connected: ' + frame);
+function connectToWebSocket(channelId, userNickname) {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        console.log("Closing previous WebSocket connection.");
+        socket.close();
+    }
 
-    stompClient.subscribe(`/topic/messages/${channelId}`, function (response) {
-        let message = JSON.parse(response.body);
-        appendMessage(message.sender, message.content, message.fileUrl);
-    });
+    sessionChannelId = channelId;
+    nickname = userNickname || "Anonymous";
+    const wsUrl = "/ws";
 
-    stompClient.subscribe(`/topic/typing/${channelId}`, function (response) {
-        let typingData = JSON.parse(response.body);
-        displayTyping(typingData);
-    });
+    if (socket && (socket.readyState === WebSocket.CLOSING || socket.readyState === WebSocket.CLOSED)) {
+        socket = new WebSocket(`ws://${window.location.host}${wsUrl}`);
+    }
 
-    fetch(`/app/chat/channels/${channelId}/messages`)
-        .then(response => response.json())
-        .then(messages => {
-            messages.forEach(message => appendMessage(message.sender, message.content, message.fileUrl));
-        })
-        .catch(error => console.error('Error fetching messages:', error));
-});
+    socket = new WebSocket(`ws://${window.location.host}${wsUrl}`);
+
+    socket.onopen = () => {
+        console.log("Connected to WebSocket");
+    };
+
+    socket.onmessage = (event) => {
+        try {
+            const message = JSON.parse(event.data);
+            console.log("Received message:", message);
+        } catch (error) {
+            console.error("Error parsing WebSocket message:", error);
+        }
+    };
+
+    socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+    };
+
+    socket.onclose = (event) => {
+        console.log("Disconnected from WebSocket. Reason:", event.reason);
+    };
+}
 
 function sendMessage() {
-    let content = document.getElementById('message').value;
-    let fileInput = document.getElementById('file-input');
-    let file = fileInput.files[0];
-
-    if (!content.trim() && !file) {
-        alert("Cannot send empty message or file.");
+    if (socket.readyState !== WebSocket.OPEN) {
+        console.error("WebSocket is not open. Cannot send message.");
         return;
     }
 
-    if (file) {
-        let reader = new FileReader();
-        reader.onload = function (event) {
-            let fileUploadDto = {
-                fileContentBase64: event.target.result.split(',')[1],
-                filename: file.name,
-                contentType: file.type
-            };
+    const messageInput = document.getElementById("message");
+    const messageText = messageInput.value.trim();
+    if (!messageText) return;
 
-            stompClient.send(`/app/chat/channels/${channelId}/files`, {}, JSON.stringify(fileUploadDto));
-        };
-        reader.readAsDataURL(file);
-    } else {
-        let message = {
-            sender: nickname,
-            channelId: channelId,
-            content: content
-        };
+    const message = {
+        channelId: sessionChannelId,
+        nickname: nickname,
+        message: messageText
+    };
 
-        stompClient.send(`/app/chat/channels/${channelId}/messages`, {}, JSON.stringify(message));
-        document.getElementById('message').value = '';
-    }
+    socket.send(JSON.stringify(message));
+    messageInput.value = "";
 }
 
-function appendMessage(sender, content, fileUrl) {
-    let messages = document.getElementById('messages');
-    let newMessage = document.createElement('li');
-    if (fileUrl) {
-        let link = document.createElement('a');
-        link.href = fileUrl;
-        link.textContent = `${sender}: File (${fileUrl.split('/').pop()})`;
-        link.target = "_blank";
-        newMessage.appendChild(link);
-    } else {
-        newMessage.textContent = `${sender}: ${content}`;
+function sendUserJoinedEvent() {
+    if (socket.readyState === WebSocket.OPEN) {
+        const joinEvent = {
+            type: "USER_JOINED",
+            channelId: sessionChannelId,
+            nickname: nickname
+        };
+        socket.send(JSON.stringify(joinEvent));
     }
-    messages.appendChild(newMessage);
 }
 
 function typing() {
-    let content = document.getElementById('message').value;
-    if (content.trim() !== '') {
-        let typingData = {
-            sender: nickname,
-            channelId: channelId
-        };
-        stompClient.send(`/app/chat/channels/${channelId}/typing`, {}, JSON.stringify(typingData));
-        clearTimeout(typingTimeout);
-    } else {
-        clearTypingIndicator();
-    }
 
-    typingTimeout = setTimeout(() => {
-        clearTypingIndicator();
-    }, 3000);
-}
-
-function displayTyping(typingData) {
-    let typingIndicator = document.getElementById('typing-indicator');
-    typingIndicator.textContent = `${typingData.sender} is typing...`;
-}
-
-function clearTypingIndicator() {
-    document.getElementById('typing-indicator').textContent = '';
 }
 
 function leaveChat() {
-    stompClient.disconnect(() => {
-        window.location.href = '/';
-    });
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.close();
+    }
+    window.location.href = "/";
 }
+
+window.onload = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const channelId = urlParams.get("channelId");
+    const userNickname = urlParams.get("nickname");
+    connectToWebSocket(channelId, userNickname);
+};
+
+window.onbeforeunload = () => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.close();
+    }
+};
