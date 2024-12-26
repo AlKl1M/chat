@@ -9,9 +9,8 @@ import org.springframework.web.reactive.HandlerMapping;
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping;
 import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAdapter;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.UnicastProcessor;
+import reactor.core.publisher.Sinks;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
@@ -21,30 +20,30 @@ public class ChatSocketConfiguration {
     private final EventRepository eventRepository;
 
     @Bean
-    public UnicastProcessor<Event> eventPublisher() {
-        return UnicastProcessor.create();
+    public Sinks.Many<Event> eventPublisher() {
+        return Sinks.many().multicast().onBackpressureBuffer();
     }
 
-    public Flux<Event> events(UnicastProcessor<Event> eventPublisher) {
-        return eventPublisher
+    @Bean
+    public Flux<Event> events(Sinks.Many<Event> eventPublisher) {
+        return eventPublisher.asFlux()
                 .replay(25)
                 .autoConnect();
     }
 
     @Bean
     public HandlerMapping webSocketMapping(Flux<Event> events) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("/ws", new ChatSocketHandler(eventRepository, events));
-        SimpleUrlHandlerMapping simpleUrlHandlerMapping = new SimpleUrlHandlerMapping();
-        simpleUrlHandlerMapping.setUrlMap(map);
+        Map<String, Object> urlMap = Map.of("/ws", new ChatSocketHandler(eventRepository, null));
 
-        simpleUrlHandlerMapping.setOrder(10);
-        return simpleUrlHandlerMapping;
+        SimpleUrlHandlerMapping handlerMapping = new SimpleUrlHandlerMapping();
+        handlerMapping.setUrlMap(urlMap);
+        handlerMapping.setOrder(10);
+
+        return handlerMapping;
     }
 
     @Bean
     public WebSocketHandlerAdapter handlerAdapter() {
         return new WebSocketHandlerAdapter();
     }
-
 }

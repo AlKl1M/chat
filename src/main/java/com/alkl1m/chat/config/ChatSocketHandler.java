@@ -17,20 +17,47 @@ public class ChatSocketHandler implements WebSocketHandler {
 
     private final EventRepository eventRepository;
     private final Sinks.Many<Event> eventPublisher = Sinks.many().multicast().onBackpressureBuffer();
-    private final Flux<String> outputEvents;
     private final ObjectMapper mapper;
 
-    public ChatSocketHandler(EventRepository eventRepository, Flux<Event> outputEvents) {
+    public ChatSocketHandler(EventRepository eventRepository, ObjectMapper mapper) {
         this.eventRepository = eventRepository;
-        this.mapper = new ObjectMapper();
-        this.outputEvents = Flux.from(outputEvents).map(this::toJSON);
+        this.mapper = mapper != null ? mapper : new ObjectMapper();
+    }
+
+    @Override
+    public Mono<Void> handle(WebSocketSession session) {
+        Flux<Event> inputEvents = session.receive()
+                .map(WebSocketMessage::getPayloadAsText)
+                .map(this::toEvent)
+                .doOnNext(this::processEvent);
+
+        Flux<WebSocketMessage> outputMessages = eventPublisher.asFlux()
+                .map(this::toJSON)
+                .map(session::textMessage);
+
+        return session.send(outputMessages)
+                .and(inputEvents.then());
+    }
+
+    private void processEvent(Event event) {
+        if (event.getType() == Event.Type.CHAT_MESSAGE) {
+            eventRepository.save(event)
+                    .doOnError(error -> handleError(error, event))
+                    .subscribe();
+        }
+
+        eventPublisher.tryEmitNext(event).orThrow();
+    }
+
+    private void handleError(Throwable error, Event event) {
+        System.err.println("Error saving event: " + error.getMessage());
     }
 
     private String toJSON(Event event) {
         try {
             return mapper.writeValueAsString(event);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Error serializing event to JSON", e);
         }
     }
 
@@ -38,53 +65,7 @@ public class ChatSocketHandler implements WebSocketHandler {
         try {
             return mapper.readValue(json, Event.class);
         } catch (IOException e) {
-            throw new RuntimeException("Invalid JSON:" + json, e);
-        }
-    }
-
-    @Override
-    public Mono<Void> handle(WebSocketSession session) {
-        WebSocketMessageSubscriber subscriber = new WebSocketMessageSubscriber(eventPublisher, eventRepository);
-
-        return session.receive()
-                .map(WebSocketMessage::getPayloadAsText)
-                .map(this::toEvent)
-                .doOnNext(event -> {
-                    String channelId = (String) event.getPayload().get("channelId");
-                    event.setChannelId(channelId);
-
-                    if (event.getType() == Event.Type.CHAT_MESSAGE) {
-                        eventRepository.save(event)
-                                .doOnError(error -> System.err.println("Error saving event: " + error.getMessage()))
-                                .subscribe();
-                    }
-                })
-                .doOnNext(subscriber::onNext)
-                .doOnError(subscriber::onError)
-                .doOnComplete(subscriber::onComplete)
-                .zipWith(session.send(outputEvents.map(session::textMessage)))
-                .then();
-    }
-
-    private static class WebSocketMessageSubscriber {
-        private final Sinks.Many<Event> eventPublisher;
-        private final EventRepository eventRepository;
-
-        public WebSocketMessageSubscriber(Sinks.Many<Event> eventPublisher, EventRepository eventRepository) {
-            this.eventPublisher = eventPublisher;
-            this.eventRepository = eventRepository;
-        }
-
-        public void onNext(Event event) {
-            eventPublisher.tryEmitNext(event).orThrow();
-        }
-
-        public void onError(Throwable error) {
-            error.printStackTrace();
-        }
-
-        public void onComplete() {
-            eventPublisher.tryEmitComplete();
+            throw new RuntimeException("Invalid JSON format: " + json, e);
         }
     }
 }

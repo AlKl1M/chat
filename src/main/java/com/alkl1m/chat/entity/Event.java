@@ -27,5 +27,7 @@ public class Event {
 
     private Type type;
 
-    private Map<String, Object> payload;
+    private String message;
+
+    private String nickname;
 }
