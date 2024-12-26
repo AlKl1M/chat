@@ -12,11 +12,13 @@ import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ChatSocketHandler implements WebSocketHandler {
 
     private final EventRepository eventRepository;
-    private final Sinks.Many<Event> eventPublisher = Sinks.many().multicast().onBackpressureBuffer();
+    private final Map<String, Sinks.Many<Event>> channelSinks = new ConcurrentHashMap<>();
     private final ObjectMapper mapper;
 
     public ChatSocketHandler(EventRepository eventRepository, ObjectMapper mapper) {
@@ -26,12 +28,19 @@ public class ChatSocketHandler implements WebSocketHandler {
 
     @Override
     public Mono<Void> handle(WebSocketSession session) {
+        String channelId = extractChannelId(session);
+
+        Sinks.Many<Event> channelSink = channelSinks.computeIfAbsent(channelId, key ->
+                Sinks.many().multicast().onBackpressureBuffer()
+        );
+
         Flux<Event> inputEvents = session.receive()
                 .map(WebSocketMessage::getPayloadAsText)
                 .map(this::toEvent)
-                .doOnNext(this::processEvent);
+                .doOnNext(event -> processEvent(event, channelId));
 
-        Flux<WebSocketMessage> outputMessages = eventPublisher.asFlux()
+        Flux<WebSocketMessage> outputMessages = channelSink.asFlux()
+                .filter(event -> event.getChannelId().equals(channelId))
                 .map(this::toJSON)
                 .map(session::textMessage);
 
@@ -39,14 +48,32 @@ public class ChatSocketHandler implements WebSocketHandler {
                 .and(inputEvents.then());
     }
 
-    private void processEvent(Event event) {
+    private void processEvent(Event event, String channelId) {
+        event.setChannelId(channelId);
+
         if (event.getType() == Event.Type.CHAT_MESSAGE) {
             eventRepository.save(event)
                     .doOnError(error -> handleError(error, event))
                     .subscribe();
         }
 
-        eventPublisher.tryEmitNext(event).orThrow();
+        if (event.getType() == Event.Type.USER_TYPING) {
+            Sinks.Many<Event> channelSink = channelSinks.get(channelId);
+            if (channelSink != null) {
+                channelSink.tryEmitNext(event).orThrow();
+            }
+            return;
+        }
+
+        Sinks.Many<Event> channelSink = channelSinks.get(channelId);
+        if (channelSink != null) {
+            channelSink.tryEmitNext(event).orThrow();
+        }
+    }
+
+    private String extractChannelId(WebSocketSession session) {
+        return session.getHandshakeInfo().getUri().getQuery()
+                .replaceAll(".*channelId=([^&]+).*", "$1");
     }
 
     private void handleError(Throwable error, Event event) {
