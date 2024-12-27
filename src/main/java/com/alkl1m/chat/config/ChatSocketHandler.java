@@ -51,18 +51,12 @@ public class ChatSocketHandler implements WebSocketHandler {
     private void processEvent(Event event, String channelId) {
         event.setChannelId(channelId);
 
-        if (event.getType() == Event.Type.CHAT_MESSAGE) {
+        if (event.getType() == Event.Type.CHAT_MESSAGE
+                || event.getType() == Event.Type.USER_JOINED
+                || event.getType() == Event.Type.USER_LEFT) {
             eventRepository.save(event)
                     .doOnError(error -> handleError(error, event))
                     .subscribe();
-        }
-
-        if (event.getType() == Event.Type.USER_TYPING) {
-            Sinks.Many<Event> channelSink = channelSinks.get(channelId);
-            if (channelSink != null) {
-                channelSink.tryEmitNext(event).orThrow();
-            }
-            return;
         }
 
         Sinks.Many<Event> channelSink = channelSinks.get(channelId);

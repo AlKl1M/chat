@@ -17,7 +17,7 @@ import java.util.Map;
 public class Event {
 
     public enum Type {
-        CHAT_MESSAGE, USER_JOINED, USER_TYPING, USER_LEFT
+        CHAT_MESSAGE, USER_JOINED, USER_LEFT
     }
 
     @Id

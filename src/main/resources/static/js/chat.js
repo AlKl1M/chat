@@ -28,10 +28,10 @@ function connectToWebSocket(channel, userNickname) {
 }
 
 function displayMessage(event) {
+    const { nickname, message, type } = event;
+
     const messagesList = document.getElementById("messages");
     const messageElement = document.createElement("li");
-
-    const { nickname, message, type } = event;
 
     if (type === "CHAT_MESSAGE") {
         messageElement.textContent = `${nickname || "Anonymous"}: ${message}`;
@@ -39,8 +39,6 @@ function displayMessage(event) {
         messageElement.textContent = `${nickname || "Anonymous"} joined the chat.`;
     } else if (type === "USER_LEFT") {
         messageElement.textContent = `${nickname || "Anonymous"} left the chat.`;
-    } else if (type === "USER_TYPING") {
-        messageElement.textContent = `${nickname || "Anonymous"} is typing...`;
     }
 
     messagesList.appendChild(messageElement);
@@ -74,27 +72,9 @@ function sendUserJoinedEvent() {
         channelId,
         type: "USER_JOINED",
         nickname,
+        message: `joined the chat.`,
     };
     socket.send(JSON.stringify(event));
-}
-
-function typing() {
-    const event = {
-        id: generateId(),
-        channelId,
-        type: "USER_TYPING",
-        nickname,
-    };
-    socket.send(JSON.stringify(event));
-
-    const typingIndicator = document.getElementById("typing-indicator");
-    typingIndicator.textContent = `${nickname || "Someone"} is typing...`;
-
-    typingIndicator.style.display = "block";
-
-    setTimeout(() => {
-        typingIndicator.style.display = "none";
-    }, 2000);
 }
 
 function leaveChat() {
@@ -103,6 +83,7 @@ function leaveChat() {
         channelId,
         type: "USER_LEFT",
         nickname,
+        message: `left the chat.`,
     };
     socket.send(JSON.stringify(event));
     socket.close();

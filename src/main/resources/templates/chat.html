@@ -17,10 +17,9 @@
             <span th:text="${message.nickname}">Anonymous</span>: <span th:text="${message.message}"></span>
         </li>
     </ul>
-    <div id="typing-indicator" style="display: none;"></div>
 </div>
 <div class="input-container">
-    <input type="text" id="message" placeholder="Type a message" oninput="typing()">
+    <input type="text" id="message" placeholder="Type a message">
     <input type="file" id="file-input" accept="*/*">
     <button onclick="sendMessage()">Send</button>
     <button class="leave-button" onclick="leaveChat()">Leave Chat</button>
