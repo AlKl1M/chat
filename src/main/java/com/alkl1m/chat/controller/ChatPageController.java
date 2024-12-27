@@ -2,6 +2,7 @@ package com.alkl1m.chat.controller;
 
 import com.alkl1m.chat.entity.Event;
 import com.alkl1m.chat.repository.EventRepository;
+import com.alkl1m.chat.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -13,7 +14,7 @@ import reactor.core.publisher.Flux;
 @RequiredArgsConstructor
 public class ChatPageController {
 
-    private final EventRepository eventRepository;
+    private final ChatService chatService;
 
     @GetMapping("/")
     public String home() {
@@ -22,7 +23,7 @@ public class ChatPageController {
 
     @GetMapping("/chat")
     public String chat(@RequestParam String channelId, Model model) {
-        Flux<Event> messages = eventRepository.findByChannelId(channelId);
+        Flux<Event> messages = chatService.getMessagesByChannelId(channelId);
 
         model.addAttribute("channelId", channelId);
         model.addAttribute("messages", messages);

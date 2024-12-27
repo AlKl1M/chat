@@ -1,7 +1,10 @@
 package com.alkl1m.chat.config;
 
 import com.alkl1m.chat.entity.Event;
-import com.alkl1m.chat.repository.EventRepository;
+import com.alkl1m.chat.service.ChatService;
+import com.alkl1m.chat.util.JsonUtils;
+import com.alkl1m.chat.websocket.ChatSocketHandler;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,7 +20,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ChatSocketConfiguration {
 
-    private final EventRepository eventRepository;
+    private final ChatService chatService;
+    private final JsonUtils jsonUtils;
 
     @Bean
     public Sinks.Many<Event> eventPublisher() {
@@ -33,7 +37,7 @@ public class ChatSocketConfiguration {
 
     @Bean
     public HandlerMapping webSocketMapping(Flux<Event> events) {
-        Map<String, Object> urlMap = Map.of("/ws", new ChatSocketHandler(eventRepository, null));
+        Map<String, Object> urlMap = Map.of("/ws", new ChatSocketHandler(chatService, jsonUtils));
 
         SimpleUrlHandlerMapping handlerMapping = new SimpleUrlHandlerMapping();
         handlerMapping.setUrlMap(urlMap);
