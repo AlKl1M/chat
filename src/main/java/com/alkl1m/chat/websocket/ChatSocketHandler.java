@@ -28,7 +28,13 @@ public class ChatSocketHandler implements WebSocketHandler {
         Flux<Event> inputEvents = session.receive()
                 .map(WebSocketMessage::getPayloadAsText)
                 .map(json -> jsonUtils.toObject(json, Event.class))
-                .doOnNext(event -> chatService.processEvent(event, channelId));
+                .doOnNext(event -> {
+                    if (event.getType() == Event.Type.FILE_MESSAGE) {
+                        chatService.handleFileMessage(event);
+                    } else {
+                        chatService.processEvent(event, channelId);
+                    }
+                });
 
         Flux<WebSocketMessage> outputMessages = channelSink.asFlux()
                 .filter(event -> event.getChannelId().equals(channelId))
@@ -43,5 +49,4 @@ public class ChatSocketHandler implements WebSocketHandler {
         return session.getHandshakeInfo().getUri().getQuery()
                 .replaceAll(".*channelId=([^&]+).*", "$1");
     }
-
 }

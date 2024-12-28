@@ -28,7 +28,7 @@ function connectToWebSocket(channel, userNickname) {
 }
 
 function displayMessage(event) {
-    const { nickname, message, type } = event;
+    const { nickname, message, type, filename } = event;
 
     const messagesList = document.getElementById("messages");
     const messageElement = document.createElement("li");
@@ -39,6 +39,9 @@ function displayMessage(event) {
         messageElement.textContent = `${nickname || "Anonymous"} joined the chat.`;
     } else if (type === "USER_LEFT") {
         messageElement.textContent = `${nickname || "Anonymous"} left the chat.`;
+    } else if (type === "FILE_MESSAGE") {
+        messageElement.textContent = `${nickname || "Anonymous"} sent a file: ${filename}`;
+        // Add a link to download the file if needed
     }
 
     messagesList.appendChild(messageElement);
@@ -52,18 +55,37 @@ function sendMessage() {
 
     const messageInput = document.getElementById("message");
     const messageText = messageInput.value.trim();
-    if (!messageText) return;
+    if (messageText) {
+        const event = {
+            id: generateId(),
+            channelId,
+            type: "CHAT_MESSAGE",
+            message: messageText,
+            nickname,
+        };
+        socket.send(JSON.stringify(event));
+        messageInput.value = "";
+    }
 
-    const event = {
-        id: generateId(),
-        channelId,
-        type: "CHAT_MESSAGE",
-        message: messageText,
-        nickname,
-    };
+    const fileInput = document.getElementById("file-input");
+    const file = fileInput.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const base64Data = event.target.result.split(',')[1];
 
-    socket.send(JSON.stringify(event));
-    messageInput.value = "";
+            const fileEvent = {
+                id: generateId(),
+                channelId,
+                type: "FILE_MESSAGE",
+                nickname,
+                filename: file.name,
+                fileData: base64Data
+            };
+            socket.send(JSON.stringify(fileEvent));
+        };
+        reader.readAsDataURL(file);
+    }
 }
 
 function sendUserJoinedEvent() {

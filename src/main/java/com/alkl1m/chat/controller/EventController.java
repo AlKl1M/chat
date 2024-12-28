@@ -16,8 +16,7 @@ public class EventController {
 
     @GetMapping("/api/events/{sessionId}")
     public Flux<Event> getEventHistory(@PathVariable String sessionId) {
-        Flux<Event> bySessionId = eventRepository.findByChannelId(sessionId);
-
-        return bySessionId;
+        return eventRepository.findByChannelId(sessionId);
     }
+
 }

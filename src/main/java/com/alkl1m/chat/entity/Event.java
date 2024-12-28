@@ -17,7 +17,10 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class Event {
 
     public enum Type {
-        CHAT_MESSAGE, USER_JOINED, USER_LEFT
+        CHAT_MESSAGE,
+        USER_JOINED,
+        USER_LEFT,
+        FILE_MESSAGE
     }
 
     @Id
@@ -30,4 +33,8 @@ public class Event {
     private String message;
 
     private String nickname;
+
+    private String filename;
+
+    private String fileData;
 }
