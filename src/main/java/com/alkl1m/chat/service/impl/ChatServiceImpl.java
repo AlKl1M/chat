@@ -10,7 +10,6 @@ import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.data.mongodb.gridfs.ReactiveGridFsTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
 import java.util.Base64;
@@ -61,26 +60,24 @@ public class ChatServiceImpl implements ChatService {
         DataBuffer dataBuffer = new DefaultDataBufferFactory().wrap(fileBytes);
         Flux<DataBuffer> fileContentFlux = Flux.just(dataBuffer);
 
-        eventRepository.save(event)
-                .doOnError(error -> handleError(error, event))
-                .subscribe();
-
-        gridFsTemplate.store(
-                        fileContentFlux,
-                        event.getFilename()
-                ).map(ObjectId::toString)
+        gridFsTemplate.store(fileContentFlux, event.getFilename())
+                .map(ObjectId::toString)
                 .doOnSuccess(fileId -> {
                     System.out.println("Stored file with ID: " + fileId);
-                })
-                .doOnError(error -> {
-                    System.err.println("Error storing file: " + error.getMessage());
-                })
-                .subscribe();
+                    event.setFileData(null);
+                    event.setMessage("/api/events/download/" + fileId);
+                    event.setId(fileId);
+                    eventRepository.save(event)
+                            .doOnError(error -> System.err.println("Error updating event with fileId: " + error.getMessage()))
+                            .subscribe();
 
-        Sinks.Many<Event> channelSink = channelSinks.get(event.getChannelId());
-        if (channelSink != null) {
-            channelSink.tryEmitNext(event).orThrow();
-        }
+                    Sinks.Many<Event> channelSink = channelSinks.get(event.getChannelId());
+                    if (channelSink != null) {
+                        channelSink.tryEmitNext(event).orThrow();
+                    }
+                })
+                .doOnError(error -> System.err.println("Error storing file: " + error.getMessage()))
+                .subscribe();
     }
 
     private void handleError(Throwable error, Event event) {

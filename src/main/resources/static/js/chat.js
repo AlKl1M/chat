@@ -28,7 +28,7 @@ function connectToWebSocket(channel, userNickname) {
 }
 
 function displayMessage(event) {
-    const { nickname, message, type, filename } = event;
+    const { nickname, message, type, filename, fileData } = event;
 
     const messagesList = document.getElementById("messages");
     const messageElement = document.createElement("li");
@@ -40,8 +40,11 @@ function displayMessage(event) {
     } else if (type === "USER_LEFT") {
         messageElement.textContent = `${nickname || "Anonymous"} left the chat.`;
     } else if (type === "FILE_MESSAGE") {
-        messageElement.textContent = `${nickname || "Anonymous"} sent a file: ${filename}`;
-        // Add a link to download the file if needed
+        const link = document.createElement("a");
+        link.href = message;
+        link.textContent = `${nickname || "Anonymous"} sent a file: ${filename}`;
+        link.download = filename;
+        messageElement.appendChild(link);
     }
 
     messagesList.appendChild(messageElement);
