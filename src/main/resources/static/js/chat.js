@@ -42,8 +42,8 @@ function displayMessage(event) {
     } else if (type === "FILE_MESSAGE") {
         const link = document.createElement("a");
         link.href = message;
-        link.textContent = `${nickname || "Anonymous"} sent a file: ${filename}`;
-        link.download = filename;
+        link.textContent = `${filename || "Unnamed file"}`;
+        link.target = "_blank";
         messageElement.appendChild(link);
     }
 

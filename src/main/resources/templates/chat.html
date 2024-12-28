@@ -14,7 +14,8 @@
 <div id="chat">
     <ul id="messages">
         <li th:each="message : ${messages}">
-            <span th:text="${message.nickname}">Anonymous</span>: <span th:text="${message.message}"></span>
+            <span th:text="${message.nickname}">Anonymous</span>: <span
+                th:text="${message.message}"></span>
         </li>
     </ul>
 </div>
