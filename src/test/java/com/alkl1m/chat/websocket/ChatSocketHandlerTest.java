@@ -4,6 +4,7 @@ import com.alkl1m.chat.entity.Event;
 import com.alkl1m.chat.entity.Type;
 import com.alkl1m.chat.repository.EventRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,9 +25,11 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.Assert.assertEquals;
+import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.equalTo;
 
 @ActiveProfiles("dev")
+@DisplayName("Тестовые сценарии работы ChatSocketHandler")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ChatSocketHandlerTest {
 
@@ -51,6 +54,11 @@ class ChatSocketHandlerTest {
     private static final Duration TIMEOUT = Duration.ofMillis(5000);
 
     @Test
+    @DisplayName("Тест проверяет обработку нескольких событий через WebSocket и их сохранение в MongoDB. " +
+            "Симулируется отправка пяти сообщений на сервер через WebSocket клиент. " +
+            "Ожидается, что все события корректно сохранятся в базу данных. " +
+            "Используется ожидание до 5 секунд, чтобы убедиться, что данные успели записаться в MongoDB. " +
+            "После завершения выполняется проверка количества сохраненных записей.")
     void testHandle_withCoupleOfEvents_savesDataToMongo() throws URISyntaxException {
         WebSocketClient client = new ReactorNettyWebSocketClient();
         int count = 5;
@@ -65,8 +73,6 @@ class ChatSocketHandlerTest {
                                 .doOnNext(actualRef::set)
                                 .then())
                 .block(TIMEOUT);
-
-        awaitProcessing();
 
         verifySavedEvents(count);
     }
@@ -93,18 +99,10 @@ class ChatSocketHandlerTest {
         }
     }
 
-    private void awaitProcessing() {
-        try {
-            Thread.sleep(5000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private void verifySavedEvents(int expectedCount) {
-        Flux<Event> savedEvents = eventRepository.findAll();
-        Long savedEventsCount = savedEvents.count().block();
-        assertEquals(Long.valueOf(expectedCount), savedEventsCount);
+        await()
+                .atMost(Duration.ofSeconds(5))
+                .until(() -> eventRepository.findAll().count().block(), equalTo((long) expectedCount));
     }
 
     protected URI getUrl(String path) throws URISyntaxException {

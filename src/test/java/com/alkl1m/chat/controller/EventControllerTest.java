@@ -5,6 +5,7 @@ import com.alkl1m.chat.entity.Type;
 import com.alkl1m.chat.repository.EventRepository;
 import com.alkl1m.chat.service.ChatService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
@@ -28,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("dev")
 @Testcontainers
 @AutoConfigureWebTestClient
+@DisplayName("Тестовые сценарии работы EventController")
 class EventControllerTest {
 
     static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:latest");
@@ -60,18 +62,8 @@ class EventControllerTest {
         gridFsTemplate.delete(Query.query(Criteria.where("_id").exists(true))).subscribe();
     }
 
-    private Event createEvent(String channelId, Type type, String message, String nickname, String filename, String fileData) {
-        return Event.builder()
-                .channelId(channelId)
-                .type(type)
-                .message(message)
-                .nickname(nickname)
-                .filename(filename)
-                .fileData(fileData)
-                .build();
-    }
-
     @Test
+    @DisplayName("Получение истории событий: проверка возвращаемых данных для сохраненного события")
     void getEventHistory_withValidSavedData_ReturnsCorrectData() {
         Event event1 = createEvent("channel1", Type.CHAT_MESSAGE, "Message 1", "user1", "file1.txt", "filedata1");
         eventRepository.save(event1).block();
@@ -87,6 +79,7 @@ class EventControllerTest {
     }
 
     @Test
+    @DisplayName("Получение истории событий: проверка возврата всех событий для одного канала")
     void getEventHistory_WithMultipleEvents_ReturnsAllEvents() {
         Event event1 = createEvent("channel1", Type.CHAT_MESSAGE, "Message 1", "user1", "file1.txt", "filedata1");
         Event event2 = createEvent("channel1", Type.FILE_MESSAGE, "File Message 1", "user2", "file2.txt", "filedata2");
@@ -104,6 +97,7 @@ class EventControllerTest {
     }
 
     @Test
+    @DisplayName("Получение истории событий: проверка возврата пустого списка для несуществующего канала")
     void getEventHistory_WithNonExistentChannel_ReturnsEmptyList() {
         webTestClient.get().uri("/api/events/nonExistentChannel")
                 .exchange()
@@ -113,6 +107,7 @@ class EventControllerTest {
     }
 
     @Test
+    @DisplayName("Получение истории событий: проверка типов событий при добавлении и выходе пользователя")
     void getEventHistory_WithUserJoinedAndLeftEvents_ReturnsCorrectEventTypes() {
         Event userJoinedEvent = createEvent("channel1", Type.USER_JOINED, "User joined", "user1", null, null);
         Event userLeftEvent = createEvent("channel1", Type.USER_LEFT, "User left", "user1", null, null);
@@ -131,6 +126,7 @@ class EventControllerTest {
     }
 
     @Test
+    @DisplayName("Получение истории событий: проверка данных файла для события с файлом")
     void getEventHistory_WithFileMessage_ReturnsCorrectFileData() {
         Event fileMessageEvent = createEvent("channel1", Type.FILE_MESSAGE, "File Message 1", "user1", "file1.pdf", "filedata1");
         eventRepository.save(fileMessageEvent).block();
@@ -147,6 +143,7 @@ class EventControllerTest {
     }
 
     @Test
+    @DisplayName("Загрузка файла: проверка успешного ответа при пустых данных файла")
     void testDownloadFile_withEmptyData_ReturnsOkForValidFile() {
         Event fileMessageEvent = createEvent("channel1", Type.FILE_MESSAGE, "File Message 1", "user1", "file1.pdf", "filedata1");
         eventRepository.save(fileMessageEvent).block();
@@ -159,6 +156,7 @@ class EventControllerTest {
     }
 
     @Test
+    @DisplayName("Загрузка файла: проверка успешной загрузки файла с base64-кодировкой")
     void testDownloadFile_AfterSaveNewBase64EncodedFile_returnsOkStatus() {
         String base64File = Base64.getEncoder().encodeToString("Test file content".getBytes());
 
@@ -173,4 +171,16 @@ class EventControllerTest {
                 .exchange()
                 .expectStatus().isOk();
     }
+
+    private Event createEvent(String channelId, Type type, String message, String nickname, String filename, String fileData) {
+        return Event.builder()
+                .channelId(channelId)
+                .type(type)
+                .message(message)
+                .nickname(nickname)
+                .filename(filename)
+                .fileData(fileData)
+                .build();
+    }
+
 }

@@ -1,10 +1,10 @@
 package com.alkl1m.chat.service.impl;
 
-
 import com.alkl1m.chat.entity.Event;
 import com.alkl1m.chat.entity.Type;
 import com.alkl1m.chat.repository.EventRepository;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,6 +26,7 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 @SpringBootTest
 @ActiveProfiles("dev")
 @Testcontainers
+@DisplayName("Тестовые сценарии работы ChatServiceImpl")
 class ChatServiceImplTest {
 
     static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:latest");
@@ -52,6 +53,7 @@ class ChatServiceImplTest {
     }
 
     @Test
+    @DisplayName("Обработка события: сохранение сообщения чата в базу данных")
     void testProcessEvent_chatMessage_eventSavedToDatabase() {
         Event event = new Event();
         event.setType(Type.CHAT_MESSAGE);
@@ -68,6 +70,7 @@ class ChatServiceImplTest {
     }
 
     @Test
+    @DisplayName("Получение Sink: проверка возврата корректного Sink для канала")
     void testGetChannelSink_correctSinkReturned() {
         String channelId = "channel1";
         Sinks.Many<Event> channelSink = chatService.getChannelSink(channelId);
@@ -76,6 +79,7 @@ class ChatServiceImplTest {
     }
 
     @Test
+    @DisplayName("Обработка события: сохранение события 'пользователь присоединился' в базу данных")
     void testProcessEvent_userJoined_eventSavedToDatabase() {
         Event event = new Event();
         event.setType(Type.USER_JOINED);
@@ -93,6 +97,7 @@ class ChatServiceImplTest {
     }
 
     @Test
+    @DisplayName("Обработка события: сохранение события 'пользователь покинул' в базу данных")
     void testProcessEvent_userLeft_eventSavedToDatabase() {
         Event event = new Event();
         event.setType(Type.USER_LEFT);
@@ -110,6 +115,7 @@ class ChatServiceImplTest {
     }
 
     @Test
+    @DisplayName("Получение сообщений по ID канала: проверка порядка сообщений")
     void testGetMessagesByChannelId_returnMessagesInOrder() {
         Event event1 = new Event();
         event1.setType(Type.CHAT_MESSAGE);
@@ -134,6 +140,7 @@ class ChatServiceImplTest {
     }
 
     @Test
+    @DisplayName("Обработка события: проверка, что событие отправлено в Sink")
     void testProcessEvent_channelSink_emitsEvent() {
         Event event = new Event();
         event.setType(Type.CHAT_MESSAGE);
@@ -150,10 +157,12 @@ class ChatServiceImplTest {
     }
 
     @Test
+    @DisplayName("Получение сообщений по ID канала: проверка возврата пустого результата для пустого канала")
     void testGetMessagesByChannelId_emptyChannel() {
         String channelId = "emptyChannel";
 
         StepVerifier.create(chatService.getMessagesByChannelId(channelId))
                 .verifyComplete();
     }
+
 }
