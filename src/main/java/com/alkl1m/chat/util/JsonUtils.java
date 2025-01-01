@@ -56,4 +56,5 @@ public class JsonUtils {
             throw new JsonDeserializationException("Invalid JSON format: " + json, e);
         }
     }
+
 }

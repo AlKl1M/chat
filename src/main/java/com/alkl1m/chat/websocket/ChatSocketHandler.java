@@ -67,4 +67,5 @@ public class ChatSocketHandler implements WebSocketHandler {
         return session.getHandshakeInfo().getUri().getQuery()
                 .replaceAll(".*channelId=([^&]+).*", "$1");
     }
+
 }

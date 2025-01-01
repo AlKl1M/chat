@@ -80,4 +80,5 @@ public class ChatSocketConfiguration {
     public WebSocketHandlerAdapter handlerAdapter() {
         return new WebSocketHandlerAdapter();
     }
+
 }

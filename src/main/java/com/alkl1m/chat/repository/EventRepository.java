@@ -7,5 +7,7 @@ import reactor.core.publisher.Flux;
 
 @Repository
 public interface EventRepository extends ReactiveMongoRepository<Event, String> {
+
     Flux<Event> findByChannelId(String channelId);
+
 }
