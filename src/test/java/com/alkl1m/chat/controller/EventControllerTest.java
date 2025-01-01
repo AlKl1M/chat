@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("dev")
 @Testcontainers
 @AutoConfigureWebTestClient
-public class EventControllerTest {
+class EventControllerTest {
 
     static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:latest");
 
