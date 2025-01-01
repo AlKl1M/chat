@@ -28,23 +28,29 @@ function connectToWebSocket(channel, userNickname) {
 }
 
 function displayMessage(event) {
-    const { nickname, message, type, filename, fileData } = event;
+    const {nickname, message, type, filename} = event;
 
     const messagesList = document.getElementById("messages");
     const messageElement = document.createElement("li");
 
     if (type === "CHAT_MESSAGE") {
-        messageElement.textContent = `${nickname || "Anonymous"}: ${message}`;
+        messageElement.innerHTML = `
+            <span>${nickname || "Anonymous"}</span>: 
+            <span>${message}</span>
+        `;
     } else if (type === "USER_JOINED") {
-        messageElement.textContent = `${nickname || "Anonymous"} joined the chat.`;
+        messageElement.innerHTML = `
+            <span>${nickname || "Anonymous"}</span> joined the chat.
+        `;
     } else if (type === "USER_LEFT") {
-        messageElement.textContent = `${nickname || "Anonymous"} left the chat.`;
+        messageElement.innerHTML = `
+            <span>${nickname || "Anonymous"}</span> left the chat.
+        `;
     } else if (type === "FILE_MESSAGE") {
-        const link = document.createElement("a");
-        link.href = message;
-        link.textContent = `${filename || "Unnamed file"}`;
-        link.target = "_blank";
-        messageElement.appendChild(link);
+        messageElement.innerHTML = `
+            <span>${nickname || "Anonymous"}</span> sent a file: 
+            <a href="${message}" target="_blank">${filename || "Unnamed file"}</a>
+        `;
     }
 
     messagesList.appendChild(messageElement);
@@ -74,7 +80,7 @@ function sendMessage() {
     const file = fileInput.files[0];
     if (file) {
         const reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = function (event) {
             const base64Data = event.target.result.split(',')[1];
 
             const fileEvent = {
