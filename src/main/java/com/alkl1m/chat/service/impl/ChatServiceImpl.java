@@ -49,7 +49,7 @@ public class ChatServiceImpl implements ChatService {
                 || event.getType() == Type.USER_JOINED
                 || event.getType() == Type.USER_LEFT) {
             eventRepository.save(event)
-                    .doOnError(error -> handleError(error, event))
+                    .doOnError(error -> log.error("Error saving event: {}", error.getMessage()))
                     .subscribe();
         }
 
@@ -114,39 +114,86 @@ public class ChatServiceImpl implements ChatService {
      */
     @Override
     public void handleFileMessage(Event event) {
-        String base64FileData = event.getFileData();
-        byte[] fileBytes = Base64.getDecoder().decode(base64FileData);
+        byte[] fileBytes = decodeBase64FileData(event.getFileData());
+        Flux<DataBuffer> fileContentFlux = wrapFileBytesToDataBuffer(fileBytes);
 
-        DataBuffer dataBuffer = new DefaultDataBufferFactory().wrap(fileBytes);
-        Flux<DataBuffer> fileContentFlux = Flux.just(dataBuffer);
-
-        gridFsTemplate.store(fileContentFlux, event.getFilename())
-                .map(ObjectId::toString)
+        storeFileInGridFs(fileContentFlux, event.getFilename())
                 .doOnSuccess(fileId -> {
                     log.info("Stored file with ID: {}", fileId);
-                    event.setFileData(null);
-                    event.setMessage("/api/events/download/" + fileId);
-                    event.setId(fileId);
+                    updateEventWithFileLink(event, fileId);
                 })
-                .flatMap(fileId -> eventRepository.save(event)
-                        .doOnError(error -> log.error("Error updating event with fileId: {}", error.getMessage())))
-                .doOnTerminate(() -> {
-                    Sinks.Many<Event> channelSink = channelSinks.get(event.getChannelId());
-                    if (channelSink != null) {
-                        channelSink.tryEmitNext(event).orThrow();
-                    }
-                })
+                .flatMap(fileId -> saveEvent(event))
+                .doOnTerminate(() -> sendEventToChannel(event))
                 .doOnError(error -> log.error("Error storing file: {}", error.getMessage()))
                 .subscribe();
     }
 
     /**
-     * Обрабатывает ошибку при сохранении события и логирует ее.
+     * Декодирует строку Base64 в массив байтов.
      *
-     * @param error ошибка, произошедшая при сохранении события.
-     * @param event событие, с которым произошла ошибка.
+     * @param base64FileData строка, содержащая данные файла в формате Base64.
+     * @return массив байтов, полученный после декодирования.
      */
-    private void handleError(Throwable error, Event event) {
-        log.error("Error saving event: {}", error.getMessage());
+    private byte[] decodeBase64FileData(String base64FileData) {
+        return Base64.getDecoder().decode(base64FileData);
     }
+
+    /**
+     * Преобразует массив байтов в DataBuffer для дальнейшей обработки.
+     *
+     * @param fileBytes массив байтов, представляющий содержимое файла.
+     * @return DataBuffer, содержащий данные файла.
+     */
+    private Flux<DataBuffer> wrapFileBytesToDataBuffer(byte[] fileBytes) {
+        DataBuffer dataBuffer = new DefaultDataBufferFactory().wrap(fileBytes);
+        return Flux.just(dataBuffer);
+    }
+
+    /**
+     * Сохраняет файл в GridFS и возвращает идентификатор файла.
+     *
+     * @param fileContentFlux Flux, содержащий данные файла.
+     * @param filename        имя файла для хранения.
+     * @return Mono, которое завершится идентификатором сохранённого файла.
+     */
+    private Mono<String> storeFileInGridFs(Flux<DataBuffer> fileContentFlux, String filename) {
+        return gridFsTemplate.store(fileContentFlux, filename)
+                .map(ObjectId::toString);
+    }
+
+    /**
+     * Обновляет событие, добавляя ссылку на загруженный файл.
+     *
+     * @param event  событие, которое нужно обновить.
+     * @param fileId идентификатор файла в GridFS.
+     */
+    private void updateEventWithFileLink(Event event, String fileId) {
+        event.setFileData(null);
+        event.setMessage("/api/events/download/" + fileId);
+        event.setId(fileId);
+    }
+
+    /**
+     * Сохраняет событие в репозитории.
+     *
+     * @param event событие, которое нужно сохранить.
+     * @return Mono, которое завершится сохранением события.
+     */
+    private Mono<Event> saveEvent(Event event) {
+        return eventRepository.save(event)
+                .doOnError(error -> log.error("Error updating event with fileId: {}", error.getMessage()));
+    }
+
+    /**
+     * Отправляет обновлённое событие в канал.
+     *
+     * @param event событие, которое нужно отправить.
+     */
+    private void sendEventToChannel(Event event) {
+        Sinks.Many<Event> channelSink = channelSinks.get(event.getChannelId());
+        if (channelSink != null) {
+            channelSink.tryEmitNext(event).orThrow();
+        }
+    }
+
 }
