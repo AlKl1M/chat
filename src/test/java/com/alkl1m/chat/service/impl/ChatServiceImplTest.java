@@ -2,6 +2,7 @@ package com.alkl1m.chat.service.impl;
 
 
 import com.alkl1m.chat.entity.Event;
+import com.alkl1m.chat.entity.Type;
 import com.alkl1m.chat.repository.EventRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -53,7 +54,7 @@ class ChatServiceImplTest {
     @Test
     void testProcessEvent_chatMessage_eventSavedToDatabase() {
         Event event = new Event();
-        event.setType(Event.Type.CHAT_MESSAGE);
+        event.setType(Type.CHAT_MESSAGE);
         event.setMessage("Test message");
         String channelId = "channel1";
 
@@ -63,30 +64,6 @@ class ChatServiceImplTest {
                 .untilAsserted(() -> {
                     Mono<Event> savedEvent = eventRepository.findById(event.getId());
                     assertNotNull(savedEvent.block());
-                });
-    }
-
-    @Test
-    void testGetMessagesByChannelId_returnCorrectMessages() {
-        Event event1 = new Event();
-        event1.setType(Event.Type.CHAT_MESSAGE);
-        event1.setMessage("Message 1");
-        event1.setChannelId("channel1");
-
-        Event event2 = new Event();
-        event2.setType(Event.Type.CHAT_MESSAGE);
-        event2.setMessage("Message 2");
-        event2.setChannelId("channel1");
-
-        chatService.processEvent(event1, "channel1");
-        chatService.processEvent(event2, "channel1");
-
-        await().atMost(5, TimeUnit.SECONDS)
-                .untilAsserted(() -> {
-                    StepVerifier.create(eventRepository.findByChannelId("channel1"))
-                            .expectNextMatches(e -> "Message 1".equals(e.getMessage()))
-                            .expectNextMatches(e -> "Message 2".equals(e.getMessage()))
-                            .verifyComplete();
                 });
     }
 
@@ -101,7 +78,7 @@ class ChatServiceImplTest {
     @Test
     void testProcessEvent_userJoined_eventSavedToDatabase() {
         Event event = new Event();
-        event.setType(Event.Type.USER_JOINED);
+        event.setType(Type.USER_JOINED);
         event.setMessage("User joined");
         String channelId = "channel1";
 
@@ -111,14 +88,14 @@ class ChatServiceImplTest {
                 .untilAsserted(() -> {
                     Mono<Event> savedEvent = eventRepository.findById(event.getId());
                     assertNotNull(savedEvent.block());
-                    assertEquals(Event.Type.USER_JOINED, savedEvent.block().getType());
+                    assertEquals(Type.USER_JOINED, savedEvent.block().getType());
                 });
     }
 
     @Test
     void testProcessEvent_userLeft_eventSavedToDatabase() {
         Event event = new Event();
-        event.setType(Event.Type.USER_LEFT);
+        event.setType(Type.USER_LEFT);
         event.setMessage("User left");
         String channelId = "channel1";
 
@@ -128,19 +105,19 @@ class ChatServiceImplTest {
                 .untilAsserted(() -> {
                     Mono<Event> savedEvent = eventRepository.findById(event.getId());
                     assertNotNull(savedEvent.block());
-                    assertEquals(Event.Type.USER_LEFT, savedEvent.block().getType());
+                    assertEquals(Type.USER_LEFT, savedEvent.block().getType());
                 });
     }
 
     @Test
     void testGetMessagesByChannelId_returnMessagesInOrder() {
         Event event1 = new Event();
-        event1.setType(Event.Type.CHAT_MESSAGE);
+        event1.setType(Type.CHAT_MESSAGE);
         event1.setMessage("Message 1");
         event1.setChannelId("channel1");
 
         Event event2 = new Event();
-        event2.setType(Event.Type.CHAT_MESSAGE);
+        event2.setType(Type.CHAT_MESSAGE);
         event2.setMessage("Message 2");
         event2.setChannelId("channel1");
 
@@ -159,7 +136,7 @@ class ChatServiceImplTest {
     @Test
     void testProcessEvent_channelSink_emitsEvent() {
         Event event = new Event();
-        event.setType(Event.Type.CHAT_MESSAGE);
+        event.setType(Type.CHAT_MESSAGE);
         event.setMessage("Message emitted to sink");
         String channelId = "channel1";
 
