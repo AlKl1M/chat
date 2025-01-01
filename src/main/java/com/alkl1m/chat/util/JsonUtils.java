@@ -8,15 +8,30 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
+/**
+ * @author AlKl1M
+ */
 @Component
 public class JsonUtils {
 
     private final ObjectMapper mapper;
 
+    /**
+     * Конструктор для инициализации JsonUtils с заданным ObjectMapper.
+     *
+     * @param mapper ObjectMapper для сериализации и десериализации объектов.
+     */
     public JsonUtils(ObjectMapper mapper) {
         this.mapper = mapper;
     }
 
+    /**
+     * Преобразует объект в строку JSON.
+     *
+     * @param object объект, который необходимо сериализовать в JSON.
+     * @return строка в формате JSON, представляющая объект.
+     * @throws JsonSerializationException если возникла ошибка при сериализации.
+     */
     public String toJSON(Object object) {
         try {
             return mapper.writeValueAsString(object);
@@ -25,6 +40,15 @@ public class JsonUtils {
         }
     }
 
+    /**
+     * Преобразует строку JSON в объект указанного типа.
+     *
+     * @param json      строка в формате JSON.
+     * @param valueType тип объекта, в который необходимо преобразовать JSON.
+     * @param <T>       тип объекта, который будет получен из JSON.
+     * @return объект типа T, полученный из строки JSON.
+     * @throws JsonDeserializationException если строка JSON имеет неверный формат.
+     */
     public <T> T toObject(String json, Class<T> valueType) {
         try {
             return mapper.readValue(json, valueType);

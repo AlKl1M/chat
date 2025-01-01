@@ -8,6 +8,13 @@ import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+/**
+ * Основная сущность для каждого события.
+ * В случае, если это сообщение или подобное событие, то filename и другие
+ * связанные с файлом поля пустые. Иначе - наоборот.
+ *
+ * @author AlKl1M
+ */
 @Getter
 @Setter
 @Builder
@@ -15,13 +22,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @NoArgsConstructor
 @Document(collection = "events")
 public class Event {
-
-    public enum Type {
-        CHAT_MESSAGE,
-        USER_JOINED,
-        USER_LEFT,
-        FILE_MESSAGE
-    }
 
     @Id
     private String id;

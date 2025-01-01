@@ -1,6 +1,7 @@
 package com.alkl1m.chat.websocket;
 
 import com.alkl1m.chat.entity.Event;
+import com.alkl1m.chat.entity.Type;
 import com.alkl1m.chat.service.ChatService;
 import com.alkl1m.chat.util.JsonUtils;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,11 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
+/**
+ * Класс, имплементирующий WebSocketHandler и определяющий способы обработки сессии вебсокета.
+ *
+ * @author AlKl1M
+ */
 @Component
 @RequiredArgsConstructor
 public class ChatSocketHandler implements WebSocketHandler {
@@ -19,6 +25,12 @@ public class ChatSocketHandler implements WebSocketHandler {
     private final ChatService chatService;
     private final JsonUtils jsonUtils;
 
+    /**
+     * Обрабатывает WebSocket-сессию, получая события и отправляя их обратно через WebSocket.
+     *
+     * @param session объект WebSocketSession, представляющий текущую WebSocket-сессию.
+     * @return Mono<Void> указывающий на завершение обработки сессии.
+     */
     @Override
     public Mono<Void> handle(WebSocketSession session) {
         String channelId = extractChannelId(session);
@@ -29,7 +41,7 @@ public class ChatSocketHandler implements WebSocketHandler {
                 .map(WebSocketMessage::getPayloadAsText)
                 .map(json -> jsonUtils.toObject(json, Event.class))
                 .doOnNext(event -> {
-                    if (event.getType() == Event.Type.FILE_MESSAGE) {
+                    if (event.getType() == Type.FILE_MESSAGE) {
                         chatService.handleFileMessage(event);
                     } else {
                         chatService.processEvent(event, channelId);
@@ -45,6 +57,12 @@ public class ChatSocketHandler implements WebSocketHandler {
                 .and(inputEvents.then());
     }
 
+    /**
+     * Извлекает channelId из параметров запроса WebSocket-сессии.
+     *
+     * @param session объект WebSocketSession, представляющий текущую WebSocket-сессию.
+     * @return строка, представляющая идентификатор канала.
+     */
     private String extractChannelId(WebSocketSession session) {
         return session.getHandshakeInfo().getUri().getQuery()
                 .replaceAll(".*channelId=([^&]+).*", "$1");
